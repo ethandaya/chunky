@@ -54,28 +54,35 @@ Each `docs/chunks/<CHUNK_ID>.md` should follow this structure:
 
 ## Pre-flight Q&A Template
 
-Create `docs/PREFLIGHT_QA.md` using this structure:
+Create `docs/PREFLIGHT_QA.md` using this structure. This file is written during Stage B of the preflight (after the human has answered questions presented in chat during Stage A).
 
 ```md
 # Pre-flight Q&A
 
-## Open Questions
+## Questions & Answers
 
-- [ ] <question the agent cannot answer from existing context>
-- [ ] <question about ambiguous requirements>
+### Blocking
 
-## Answers
-
-> **Q:** <question>
+> **Q1:** <question>
 > **A:** <human's answer>
+
+> **Q2:** <question>
+> **A:** N/A — Assumption: <stated assumption>
+
+### Non-blocking
+
+> **Q3:** <question>
+> **A:** <answer or confirmed default assumption>
 
 ## Decisions
 
 - <decision 1 — e.g. "Use Stripe Checkout, not custom forms">
+- <decision 2 — rationale>
 
 ## Constraints Discovered
 
 - <constraint that affects chunk implementation>
+- <constraint propagated to SPEC.md and/or capsules>
 ```
 
 ## Knowledge Packs

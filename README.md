@@ -18,13 +18,16 @@ The spec gets broken into chunks. Each chunk is a self-contained unit of work wi
 
 - **A capsule** (`docs/chunks/<ID>.md`) - what to build, acceptance criteria, verification commands
 - **A routing entry** in `llms-map.json` - dependencies, file ownership, context budget
+- **Knowledge packs** - references to external docs (llms.txt files, API references) the agent should fetch
 - **An entry point** (`llms.txt`) - human and agent-readable navigation
+
+Before execution, the agent runs a **pre-flight Q&A** - surfacing questions it can't answer from available context. The human answers these questions once, and the answers become part of every chunk's context pack. This eliminates mid-implementation stalls where the agent stops to ask.
 
 Validation scripts verify that all artifacts are coherent before execution begins.
 
 ### Phase 3 - Execute
 
-For each chunk, the context resolver outputs the minimal set of files the agent needs. The agent reads only those files, implements the chunk, runs verification, and moves to the next one. No repo browsing, no unbounded context.
+For each chunk, the context resolver outputs the minimal set of files the agent needs plus any external docs from knowledge packs. The agent reads only those files, implements the chunk, runs verification, and moves to the next one. No repo browsing, no unbounded context.
 
 ## File Structure
 
@@ -71,6 +74,7 @@ After running chunky, the target repo will contain:
 | `llms-map.json` | Chunk routing map with context budgets |
 | `llms.txt` | Agent-readable entry point |
 | `docs/chunks/*.md` | One capsule per chunk |
+| `docs/PREFLIGHT_QA.md` | Pre-flight questions and human answers |
 
 ## License
 

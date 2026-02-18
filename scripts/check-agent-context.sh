@@ -43,6 +43,25 @@ if command -v jq >/dev/null 2>&1; then
     exit 1
   }
 
+  # Validate preflight doc exists if preflight.required is true.
+  preflight_required="$(jq -r '.preflight.required // false' "$map_file")"
+  preflight_doc="$(jq -r '.preflight.doc // empty' "$map_file")"
+  if [ "$preflight_required" = "true" ] && [ -n "$preflight_doc" ] && [ ! -f "$root/$preflight_doc" ]; then
+    echo "validation failed: preflight is required but doc not found: $preflight_doc" >&2
+    exit 1
+  fi
+
+  # Validate knowledge_packs references in chunks point to defined packs.
+  defined_packs="$(jq -r '.knowledge_packs // {} | keys[]' "$map_file" 2>/dev/null)"
+  for chunk_kp in $(jq -r '.chunks | to_entries[] | select(.value.knowledge_packs) | .key as $c | .value.knowledge_packs[] | "\($c):\(.)"' "$map_file" 2>/dev/null); do
+    c_id="${chunk_kp%%:*}"
+    pack_id="${chunk_kp#*:}"
+    echo "$defined_packs" | grep -qx "$pack_id" || {
+      echo "validation failed: chunk $c_id references undefined knowledge_pack $pack_id" >&2
+      exit 1
+    }
+  done
+
   chunk_ids="$(jq -r '.chunks | keys[]' "$map_file")"
 
   while IFS= read -r chunk; do

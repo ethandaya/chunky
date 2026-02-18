@@ -1,7 +1,7 @@
 ---
 name: chunky
 license: MIT
-description: Spec-first workflow for planning and shipping large features with coding agents. Chunks work into independently executable units with minimal context routing. Use when planning a large feature, breaking down complex scope, chunking work for agents, oneshot implementation, or spec-driven development.
+description: Spec-first workflow for planning and shipping large features with coding agents. Chunks work into independently executable units with minimal context routing. Includes pre-flight Q&A to surface unknowns before execution and knowledge packs for external docs (llms.txt, API references). Use when planning a large feature, breaking down complex scope, chunking work for agents, oneshot implementation, or spec-driven development.
 ---
 
 # Chunky
@@ -51,7 +51,7 @@ Use `assets/llms-map.template.json` as a starting point. Populate:
   - `capsule` — path to the chunk capsule file (e.g. `docs/chunks/P1-C1.md`).
   - `complexity` — `"S"`, `"M"`, or `"L"`.
 
-Optional fields: `task_router`, `orchestrator`, `phases`, `freshness`. See `assets/llms-map.schema.json` for the full schema.
+Optional fields: `knowledge_packs`, `preflight`, `task_router`, `orchestrator`, `phases`, `freshness`. See `assets/llms-map.schema.json` for the full schema.
 
 ### Step 2: Write chunk capsules
 
@@ -72,11 +72,46 @@ If any chunk depends on external documentation (library docs, API references, ll
 
 ### Step 5: Pre-flight Q&A
 
+The preflight has two stages. Stage A is read-only — no file edits. Stage B writes the results.
+
+#### Stage A — Draft questions (read-only)
+
+1. Read the spec, all chunk capsules, and any knowledge pack URLs registered in `llms-map.json`.
+2. Identify every question the agent cannot answer from available context. Only ask questions that would change code, schema, verification, rollout, or security decisions. For anything else, state an assumption.
+3. Present the questions **in the conversation** (not in a file yet) using this format:
+
+```
+## Pre-flight Questions
+
+### Blocking (must answer before execution)
+1. <question> — Assumption if unanswered: <default>
+2. <question>
+
+### Non-blocking (will assume default unless overridden)
+3. <question> — Default assumption: <assumption>
+```
+
+4. **Stop. Do not proceed.** Ask the human to reply with numbered answers. Do not narrate next steps or continue into Phase 3.
+
+> **Claude Code hint:** If available, use Plan mode or a Plan subagent for Stage A to enforce read-only research and prevent accidental edits.
+>
+> **Codex hint:** Use the `update_plan` tool to track preflight status (Drafting → Awaiting answers → Recording → Done).
+
+#### Stage B — Record answers
+
+After the human answers (or marks questions N/A):
+
 1. Create `docs/PREFLIGHT_QA.md` using the template in `references/schema-and-templates.md`.
-2. List every question the agent cannot answer from the spec, chunk capsules, or available docs.
-3. Add the preflight doc path to `llms-map.json` under `preflight.doc`.
-4. **Stop.** Present the questions to the human. Do not proceed to Phase 3 until all questions are answered or marked N/A.
-5. Record answers in the `## Answers` section. Move any new constraints to `## Constraints Discovered`.
+2. Transcribe all questions, answers, decisions, and discovered constraints into the file.
+3. Set `preflight.doc` in `llms-map.json` to `"docs/PREFLIGHT_QA.md"`.
+4. If any answer reveals new constraints, update `docs/SPEC.md` and affected chunk capsules.
+5. If any answer reveals missing external docs, register them in `knowledge_packs` and add references to the relevant chunks.
+
+Confirm before proceeding:
+- [ ] All blocking questions answered or marked N/A with stated assumption.
+- [ ] `docs/PREFLIGHT_QA.md` written and complete.
+- [ ] `llms-map.json` `preflight.doc` set.
+- [ ] Spec and capsules updated if answers changed constraints.
 
 ### Step 6: Validate
 
