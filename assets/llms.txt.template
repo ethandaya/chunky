@@ -17,16 +17,19 @@ Read `docs/PREFLIGHT_QA.md` — all questions must be answered before execution 
 - `llms-map.json` — machine-readable routing map with chunk definitions and context budgets.
 - `docs/chunks/` — one capsule per chunk with acceptance criteria and verification commands.
 
-Pick a chunk whose dependencies are satisfied, resolve its context pack, implement, and verify.
+Execution is wave-based: chunks with no unmet dependencies run in parallel.
 
 ## Execution Protocol
 
-1. Pick the next executable chunk (all `depends_on` satisfied).
-2. Resolve the minimal context pack from `llms-map.json`.
-3. Read only the resolved files.
-4. Implement the chunk.
-5. Run verification commands.
-6. Confirm acceptance criteria are met.
+1. Compute the next runnable set (all `depends_on` satisfied).
+2. Execute all runnable chunks in parallel — for each:
+   a. Resolve the minimal context pack from `llms-map.json`.
+   b. Read only the resolved files.
+   c. Implement the chunk.
+   d. Run verification commands.
+   e. Confirm acceptance criteria are met.
+3. Mark completed chunks in `docs/CHUNKS_DONE.txt`.
+4. Advance to the next wave. Repeat until done.
 
 ## Verification
 

@@ -14,7 +14,7 @@ When this skill is activated, follow the three phases below in order. Each phase
 
 - **CWD is always the target repo root.**
 - Scripts and assets live in the skill directory — the directory containing this `SKILL.md` file. Derive the skill directory from this file's path and use it when running scripts (e.g., if this file is at `/home/user/.agents/skills/chunky/SKILL.md`, the skill directory is `/home/user/.agents/skills/chunky`).
-- `jq` is required for chunk and task context resolution. Scripts degrade gracefully without it for basic operations.
+- `jq` is required for chunk/task context resolution and wave planning. Only `resolve-context.sh --mode plan` degrades gracefully without it.
 
 ## Phase 1 — Design
 
@@ -113,7 +113,30 @@ Confirm before proceeding:
 - [ ] `llms-map.json` `preflight.doc` set.
 - [ ] Spec and capsules updated if answers changed constraints.
 
-### Step 6: Validate
+### Step 6: Plan execution waves
+
+Chunks that share no dependencies can run in parallel. Derive execution waves automatically:
+
+```bash
+$SKILL_DIR/scripts/plan-waves.sh --map llms-map.json --waves
+```
+
+This computes waves from the `depends_on` graph — wave 1 is all chunks with no dependencies, wave 2 is chunks whose deps are all in wave 1, and so on. Review the output. If chunks in the same wave touch overlapping files, either add a `depends_on` edge or split the chunk.
+
+You may optionally materialize waves in `llms-map.json` under `orchestrator.waves` for readability, but this is not required — the script derives waves from the dependency graph at execution time.
+
+#### Human gates (optional)
+
+By default, execution proceeds autonomously through all waves without human approval. Only add `orchestrator.human_gates` when a wave boundary involves:
+
+- Security-sensitive changes (auth, crypto, secrets)
+- Billing or entitlement logic
+- Destructive migrations (data loss risk)
+- Production configuration or infrastructure
+
+Gates pause between waves. Example: `"after_wave_2": ["approve before proceeding"]` means pause after wave 2 completes and await human approval before starting the next wave.
+
+### Step 7: Validate
 
 Run these from the target repo root (replace `$SKILL_DIR` with the absolute path to this skill's directory):
 
@@ -126,41 +149,61 @@ If either fails, fix the artifacts before proceeding.
 
 ## Phase 3 — Execute
 
-**Goal:** Implement one chunk at a time with minimal context.
+**Goal:** Implement all chunks with maximum parallelism and minimal human intervention.
 
-### Pick a chunk
+Execution proceeds wave by wave. All chunks in a wave run in parallel unless they share file ownership — in that case, add a `depends_on` edge or move one to a later wave.
 
-Choose a chunk whose `depends_on` entries are all completed. If using an orchestrator, follow wave order.
+### Execution loop
 
-### Resolve context
+Repeat until all chunks are done:
 
-Run from the target repo root:
+#### 1. Get the next runnable chunks
+
+```bash
+$SKILL_DIR/scripts/plan-waves.sh --map llms-map.json --next
+# or, if tracking completion:
+$SKILL_DIR/scripts/plan-waves.sh --map llms-map.json --next --done docs/CHUNKS_DONE.txt
+```
+
+This outputs the chunk IDs that can run now (all dependencies satisfied).
+
+#### 2. Execute all runnable chunks in parallel
+
+For **each** chunk in the runnable set, do the following simultaneously:
+
+**a. Resolve context:**
 
 ```bash
 $SKILL_DIR/scripts/resolve-context.sh --mode chunk --chunk <CHUNK_ID> --map llms-map.json
 ```
 
-This outputs the file list for the chunk's context pack and enforces budget limits.
+**b. Fetch external docs:** If the resolver emits `knowledge_packs` on stderr, fetch those URLs (prefer `llms_full_url`, fall back to `llms_txt_url` or `url`). Use these as authoritative references. Do not guess at APIs or conventions covered by a knowledge pack.
 
-### Fetch external docs
+**c. Implement:** Read **only** the resolved context pack and fetched knowledge packs. Do not browse the repo. If you discover missing context, update the chunk's `docs` in `llms-map.json` and its capsule, then re-resolve.
 
-If the resolver emits `knowledge_packs` on stderr, fetch those URLs (prefer `llms_full_url` when available, fall back to `llms_txt_url` or `url`). Use these as authoritative references during implementation. Do not guess at APIs or conventions covered by a knowledge pack.
+**d. Verify:** Run the chunk's verification commands (from the capsule and `verification.per_chunk` in `llms-map.json`). Confirm all acceptance criteria are met. Fix and re-verify until all checks pass.
 
-### Implement
+#### 3. Mark completion
 
-1. Read **only** the files in the resolved context pack and any fetched knowledge packs. Do not browse the repo.
-2. If you discover missing context, stop — update the chunk's `docs` in `llms-map.json` and its capsule, then re-resolve.
-3. Implement the chunk.
+The coordinating agent (main thread / lead) appends each completed chunk's ID to `docs/CHUNKS_DONE.txt` (one ID per line) after it passes verification. Do not let parallel workers write to this file directly — the coordinator owns it.
 
-### Verify
+#### 4. Advance to the next wave
 
-1. Run the chunk's verification commands (from the capsule and `verification.per_chunk` in `llms-map.json`).
-2. Confirm all acceptance criteria in the capsule are satisfied.
-3. If verification fails, fix and re-verify. Do not move to the next chunk until all checks pass.
+Re-run `plan-waves.sh --next --done docs/CHUNKS_DONE.txt` to get the next runnable set. Repeat until no chunks remain.
 
-### Repeat
+### Parallelism by environment
 
-Move to the next chunk. Repeat resolve → fetch → implement → verify until all chunks are done.
+The execution loop above is environment-agnostic. Use your agent's native parallelism primitives to run chunks concurrently:
+
+> **Amp / Claude Code hint:** Use the Task tool to spawn one subagent per chunk in the runnable set. Each subagent gets its own context window, resolves context, implements, and verifies independently. The main thread coordinates: computes the runnable set, spawns tasks, collects results, updates `docs/CHUNKS_DONE.txt`, and advances to the next wave.
+
+> **Claude Code agent team hint:** For large wave sizes (4+ chunks), consider agent teams instead of subagents. The lead assigns one chunk per teammate. Teammates work in separate sessions with inter-agent messaging — useful when chunks in the same wave need light coordination. Pre-approve common file operations in permission settings to reduce interruptions.
+
+> **Codex hint:** Use background tasks to run chunks in parallel. Each background task handles one chunk's resolve → implement → verify cycle.
+
+### Sequential fallback
+
+If your environment does not support parallel execution, execute chunks one at a time in dependency order. The loop is the same — the runnable set just processes sequentially.
 
 ## Execution Modes
 
@@ -172,10 +215,18 @@ The context resolver supports three modes:
 | **task** | Route a keyword to likely chunks | `--mode task --task <keyword>` |
 | **plan** | Load full planning context | `--mode plan` |
 
+The wave planner supports two modes:
+
+| Mode | When | Command |
+|------|------|---------|
+| **waves** | Show all derived waves | `--waves` |
+| **next** | Show next runnable chunks | `--next [--done <file>]` |
+
 ## Skill Contents
 
 - `SKILL.md` — this file
 - `scripts/resolve-context.sh` — resolve minimal context pack from `llms-map.json`
+- `scripts/plan-waves.sh` — derive execution waves and next runnable chunks from dependency graph
 - `scripts/check-agent-context.sh` — validate artifact coherence
 - `scripts/validate-llms-map-schema.sh` — validate `llms-map.json` against schema
 - `assets/llms-map.schema.json` — canonical JSON schema

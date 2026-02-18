@@ -27,7 +27,9 @@ Validation scripts verify that all artifacts are coherent before execution begin
 
 ### Phase 3 - Execute
 
-For each chunk, the context resolver outputs the minimal set of files the agent needs plus any external docs from knowledge packs. The agent reads only those files, implements the chunk, runs verification, and moves to the next one. No repo browsing, no unbounded context.
+Execution is parallelism-first. The wave planner derives execution waves from the chunk dependency graph — chunks with no unmet dependencies run concurrently. Each agent (subagent, teammate, or background task) resolves its chunk's context pack, fetches any knowledge pack URLs, implements, and verifies independently. A simple completion tracker (`docs/CHUNKS_DONE.txt`) drives wave advancement.
+
+The skill includes agent-specific hints for Amp (Task tool), Claude Code (subagents and agent teams), and Codex CLI (background tasks), but the execution loop is environment-agnostic.
 
 ## File Structure
 
@@ -36,6 +38,7 @@ chunky/
 ├── SKILL.md                              # Skill instructions (agent runbook)
 ├── scripts/
 │   ├── resolve-context.sh                # Resolve minimal context pack per chunk
+│   ├── plan-waves.sh                     # Derive execution waves from dependency graph
 │   ├── check-agent-context.sh            # Validate artifact coherence
 │   └── validate-llms-map-schema.sh       # Validate llms-map.json against schema
 ├── assets/
@@ -49,7 +52,7 @@ chunky/
 ## Requirements
 
 - **bash** - all scripts are POSIX-compatible bash
-- **jq** - required for chunk and task context resolution (plan mode degrades gracefully without it)
+- **jq** - required for chunk/task context resolution and wave planning (`resolve-context.sh --mode plan` degrades gracefully without it)
 - **python3 + jsonschema** or **ajv-cli** - optional, for full JSON Schema validation
 
 ## Usage
@@ -58,11 +61,13 @@ Tell your agent to use the `chunky` skill when starting a large feature. The age
 
 The context resolver supports three modes:
 
-| Mode | Purpose | Command |
-|------|---------|---------|
-| `plan` | Load full planning context | `--mode plan` |
-| `chunk` | Implement one chunk | `--mode chunk --chunk <ID>` |
-| `task` | Route a keyword to likely chunks | `--mode task --task <keyword>` |
+| Script | Mode | Purpose | Command |
+|--------|------|---------|---------|
+| `resolve-context.sh` | `plan` | Load full planning context | `--mode plan` |
+| `resolve-context.sh` | `chunk` | Implement one chunk | `--mode chunk --chunk <ID>` |
+| `resolve-context.sh` | `task` | Route a keyword to likely chunks | `--mode task --task <keyword>` |
+| `plan-waves.sh` | `waves` | Show all derived execution waves | `--waves` |
+| `plan-waves.sh` | `next` | Show next runnable chunk IDs | `--next [--done <file>]` |
 
 ## Artifacts Produced (in target repo)
 
@@ -75,6 +80,7 @@ After running chunky, the target repo will contain:
 | `llms.txt` | Agent-readable entry point |
 | `docs/chunks/*.md` | One capsule per chunk |
 | `docs/PREFLIGHT_QA.md` | Pre-flight questions and human answers |
+| `docs/CHUNKS_DONE.txt` | Completed chunk IDs (one per line) |
 
 ## License
 
