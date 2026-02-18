@@ -49,6 +49,14 @@ chunky/
     └── schema-and-templates.md           # Quick reference for schemas and templates
 ```
 
+## Install
+
+```bash
+npx skills add ethandaya/chunky
+```
+
+This installs to all compatible agents (Claude Code, Amp, Cursor, etc.) via the [skills CLI](https://github.com/vercel-labs/skills). Add `-g` for global (user-wide) install.
+
 ## Requirements
 
 - **bash** - all scripts are POSIX-compatible bash
