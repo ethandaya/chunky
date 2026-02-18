@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "updated": "YYYY-MM-DD",
+  "baseline_read_order": [
+    "docs/SPEC.md"
+  ],
+  "sub_agent_context": {
+    "always_read": [
+      "docs/SPEC.md"
+    ]
+  },
+  "context_budgets": {
+    "plan": { "max_files": 16, "max_bytes": 240000 },
+    "chunk": { "max_files": 10, "max_bytes": 160000 },
+    "task": { "max_files": 8, "max_bytes": 120000 }
+  },
+  "chunks": {}
+}

@@ -1,0 +1,34 @@
+# <Project Name>
+
+## Purpose
+
+<One sentence describing what this repo/feature is.>
+
+## Start Here
+
+Read `docs/SPEC.md` for the full feature specification.
+
+## Chunk Navigation
+
+- `llms-map.json` — machine-readable routing map with chunk definitions and context budgets.
+- `docs/chunks/` — one capsule per chunk with acceptance criteria and verification commands.
+
+Pick a chunk whose dependencies are satisfied, resolve its context pack, implement, and verify.
+
+## Execution Protocol
+
+1. Pick the next executable chunk (all `depends_on` satisfied).
+2. Resolve the minimal context pack from `llms-map.json`.
+3. Read only the resolved files.
+4. Implement the chunk.
+5. Run verification commands.
+6. Confirm acceptance criteria are met.
+
+## Verification
+
+```bash
+<install_cmd>
+<type_check_cmd>
+<test_cmd>
+<lint_cmd>
+```

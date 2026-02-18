@@ -1,0 +1,433 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "llms-map.schema.json",
+  "title": "Chunky LLM Map Schema",
+  "description": "Canonical schema for llms-map.json used by the chunky skill.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "updated",
+    "chunks",
+    "context_budgets",
+    "sub_agent_context"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "updated": {
+      "$ref": "#/$defs/date"
+    },
+    "freshness": {
+      "$ref": "#/$defs/freshness"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entrypoints": {
+      "$ref": "#/$defs/nonEmptyPathList"
+    },
+    "source_precedence": {
+      "$ref": "#/$defs/nonEmptyPathList"
+    },
+    "baseline_read_order": {
+      "$ref": "#/$defs/nonEmptyPathList"
+    },
+    "sub_agent_context": {
+      "$ref": "#/$defs/subAgentContext"
+    },
+    "context_budgets": {
+      "$ref": "#/$defs/contextBudgets"
+    },
+    "agent_execution_protocol": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "testing_policy": {
+      "$ref": "#/$defs/testingPolicy"
+    },
+    "non_negotiable_invariants": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "verification": {
+      "$ref": "#/$defs/verification"
+    },
+    "phases": {
+      "$ref": "#/$defs/phases"
+    },
+    "chunks": {
+      "$ref": "#/$defs/chunks"
+    },
+    "task_router": {
+      "$ref": "#/$defs/taskRouter"
+    },
+    "orchestrator": {
+      "$ref": "#/$defs/orchestrator"
+    }
+  },
+  "$defs": {
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonEmptyPathList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/path"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned_at",
+        "reviewed_at",
+        "stale_after_days",
+        "update_triggers"
+      ],
+      "properties": {
+        "planned_at": {
+          "$ref": "#/$defs/date"
+        },
+        "reviewed_at": {
+          "$ref": "#/$defs/date"
+        },
+        "stale_after_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "update_triggers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "subAgentContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "always_read"
+      ],
+      "properties": {
+        "always_read": {
+          "$ref": "#/$defs/nonEmptyPathList"
+        },
+        "per_chunk_read": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "templates": {
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "contextBudgetEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_files",
+        "max_bytes"
+      ],
+      "properties": {
+        "max_files": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1024
+        }
+      }
+    },
+    "contextBudgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan",
+        "chunk",
+        "task"
+      ],
+      "properties": {
+        "plan": {
+          "$ref": "#/$defs/contextBudgetEntry"
+        },
+        "chunk": {
+          "$ref": "#/$defs/contextBudgetEntry"
+        },
+        "task": {
+          "$ref": "#/$defs/contextBudgetEntry"
+        }
+      }
+    },
+    "testingPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_mode": {
+          "type": "string"
+        },
+        "exceptions_allowed": {
+          "type": "boolean"
+        },
+        "exception_register": {
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "per_chunk": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "per_app_chunk": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "full": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "phaseEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "chunks"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chunks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "phases": {
+      "type": "object",
+      "patternProperties": {
+        "^phase_[0-9]+$": {
+          "$ref": "#/$defs/phaseEntry"
+        }
+      },
+      "additionalProperties": false
+    },
+    "chunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "target",
+        "depends_on",
+        "docs",
+        "complexity"
+      ],
+      "properties": {
+        "phase": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "$ref": "#/$defs/path"
+        },
+        "filter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "testing_mode": {
+          "type": "string"
+        },
+        "docs": {
+          "$ref": "#/$defs/nonEmptyPathList"
+        },
+        "capsule": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "acceptance_source": {
+          "$ref": "#/$defs/path"
+        },
+        "complexity": {
+          "type": "string",
+          "enum": [
+            "S",
+            "M",
+            "L"
+          ]
+        }
+      }
+    },
+    "chunks": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9._:-]+$": {
+          "$ref": "#/$defs/chunk"
+        }
+      },
+      "additionalProperties": false
+    },
+    "taskRouterEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "docs",
+        "likely_chunks"
+      ],
+      "properties": {
+        "docs": {
+          "$ref": "#/$defs/nonEmptyPathList"
+        },
+        "likely_chunks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "taskRouter": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9._:-]+$": {
+          "$ref": "#/$defs/taskRouterEntry"
+        }
+      },
+      "additionalProperties": false
+    },
+    "wave": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chunks",
+        "parallel",
+        "max_concurrent"
+      ],
+      "properties": {
+        "chunks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "parallel": {
+          "type": "boolean"
+        },
+        "max_concurrent": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "orchestrator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "waves"
+      ],
+      "properties": {
+        "doc": {
+          "$ref": "#/$defs/path"
+        },
+        "waves": {
+          "type": "object",
+          "patternProperties": {
+            "^wave_[0-9]+$": {
+              "$ref": "#/$defs/wave"
+            }
+          },
+          "additionalProperties": false
+        },
+        "human_gates": {
+          "type": "object",
+          "patternProperties": {
+            "^[A-Za-z0-9._:-]+$": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}
