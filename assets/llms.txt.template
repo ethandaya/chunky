@@ -8,6 +8,10 @@
 
 Read `docs/SPEC.md` for the full feature specification.
 
+## Pre-flight Q&A
+
+Read `docs/PREFLIGHT_QA.md` — all questions must be answered before execution begins.
+
 ## Chunk Navigation
 
 - `llms-map.json` — machine-readable routing map with chunk definitions and context budgets.

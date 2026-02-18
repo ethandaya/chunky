@@ -79,6 +79,12 @@
     },
     "orchestrator": {
       "$ref": "#/$defs/orchestrator"
+    },
+    "knowledge_packs": {
+      "$ref": "#/$defs/knowledgePacks"
+    },
+    "preflight": {
+      "$ref": "#/$defs/preflight"
     }
   },
   "$defs": {
@@ -323,6 +329,14 @@
             "M",
             "L"
           ]
+        },
+        "knowledge_packs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
         }
       }
     },
@@ -426,6 +440,63 @@
             }
           },
           "additionalProperties": false
+        }
+      }
+    },
+    "knowledgePackEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "kind"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "llms_txt",
+            "url"
+          ]
+        },
+        "llms_txt_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "llms_full_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "knowledgePacks": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9._:-]+$": {
+          "$ref": "#/$defs/knowledgePackEntry"
+        }
+      },
+      "additionalProperties": false
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "doc"
+      ],
+      "properties": {
+        "doc": {
+          "$ref": "#/$defs/path"
+        },
+        "required": {
+          "type": "boolean"
         }
       }
     }

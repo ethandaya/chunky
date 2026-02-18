@@ -14,5 +14,10 @@
     "chunk": { "max_files": 10, "max_bytes": 160000 },
     "task": { "max_files": 8, "max_bytes": 120000 }
   },
+  "knowledge_packs": {},
+  "preflight": {
+    "doc": "docs/PREFLIGHT_QA.md",
+    "required": true
+  },
   "chunks": {}
 }

@@ -52,6 +52,63 @@ Each `docs/chunks/<CHUNK_ID>.md` should follow this structure:
 \```
 ```
 
+## Pre-flight Q&A Template
+
+Create `docs/PREFLIGHT_QA.md` using this structure:
+
+```md
+# Pre-flight Q&A
+
+## Open Questions
+
+- [ ] <question the agent cannot answer from existing context>
+- [ ] <question about ambiguous requirements>
+
+## Answers
+
+> **Q:** <question>
+> **A:** <human's answer>
+
+## Decisions
+
+- <decision 1 — e.g. "Use Stripe Checkout, not custom forms">
+
+## Constraints Discovered
+
+- <constraint that affects chunk implementation>
+```
+
+## Knowledge Packs
+
+Register external documentation in `llms-map.json` under `knowledge_packs`. Each entry has a stable ID, a `kind` (`llms_txt` or `url`), and the relevant URLs.
+
+```json
+"knowledge_packs": {
+  "react-router": {
+    "title": "React Router docs",
+    "kind": "llms_txt",
+    "llms_txt_url": "https://reactrouter.com/llms.txt",
+    "llms_full_url": "https://reactrouter.com/llms-full.txt"
+  },
+  "stripe-api": {
+    "title": "Stripe API reference",
+    "kind": "url",
+    "url": "https://docs.stripe.com/api"
+  }
+}
+```
+
+Reference packs per-chunk via their IDs:
+
+```json
+"P1-C1": {
+  "title": "Add billing webhook handler",
+  "knowledge_packs": ["stripe-api"]
+}
+```
+
+The context resolver emits knowledge pack URLs on stderr so agents can fetch them before implementing.
+
 ## Required Top-Level Keys in `llms-map.json`
 
 - `schema_version` — semver string

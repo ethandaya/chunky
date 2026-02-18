@@ -66,7 +66,19 @@ Create `llms.txt` in the target repo root. Use `assets/llms.txt.template` as a s
 3. Chunk navigation → `llms-map.json` and `docs/chunks/`.
 4. Verification commands that must pass.
 
-### Step 4: Validate
+### Step 4: Register knowledge packs
+
+If any chunk depends on external documentation (library docs, API references, llms.txt files), add a `knowledge_packs` map to `llms-map.json` and reference pack IDs from each chunk's `knowledge_packs` array. See `references/schema-and-templates.md` for the format.
+
+### Step 5: Pre-flight Q&A
+
+1. Create `docs/PREFLIGHT_QA.md` using the template in `references/schema-and-templates.md`.
+2. List every question the agent cannot answer from the spec, chunk capsules, or available docs.
+3. Add the preflight doc path to `llms-map.json` under `preflight.doc`.
+4. **Stop.** Present the questions to the human. Do not proceed to Phase 3 until all questions are answered or marked N/A.
+5. Record answers in the `## Answers` section. Move any new constraints to `## Constraints Discovered`.
+
+### Step 6: Validate
 
 Run these from the target repo root (replace `$SKILL_DIR` with the absolute path to this skill's directory):
 
@@ -95,9 +107,13 @@ $SKILL_DIR/scripts/resolve-context.sh --mode chunk --chunk <CHUNK_ID> --map llms
 
 This outputs the file list for the chunk's context pack and enforces budget limits.
 
+### Fetch external docs
+
+If the resolver emits `knowledge_packs` on stderr, fetch those URLs (prefer `llms_full_url` when available, fall back to `llms_txt_url` or `url`). Use these as authoritative references during implementation. Do not guess at APIs or conventions covered by a knowledge pack.
+
 ### Implement
 
-1. Read **only** the files in the resolved context pack. Do not browse the repo.
+1. Read **only** the files in the resolved context pack and any fetched knowledge packs. Do not browse the repo.
 2. If you discover missing context, stop — update the chunk's `docs` in `llms-map.json` and its capsule, then re-resolve.
 3. Implement the chunk.
 
@@ -109,7 +125,7 @@ This outputs the file list for the chunk's context pack and enforces budget limi
 
 ### Repeat
 
-Move to the next chunk. Repeat resolve → implement → verify until all chunks are done.
+Move to the next chunk. Repeat resolve → fetch → implement → verify until all chunks are done.
 
 ## Execution Modes
 

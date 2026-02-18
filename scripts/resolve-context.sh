@@ -106,6 +106,56 @@ esac | awk 'NF{print}' | while IFS= read -r file; do
   echo "$file"
 done | sort -u > "$tmpfile"
 
+# Include preflight doc if configured and file exists.
+preflight_doc="$(jq -r '.preflight.doc // empty' "$map_file" 2>/dev/null)"
+if [ -n "$preflight_doc" ] && [ -f "$preflight_doc" ]; then
+  if ! grep -qx "$preflight_doc" "$tmpfile" 2>/dev/null; then
+    echo "$preflight_doc" >> "$tmpfile"
+  fi
+fi
+
+# Emit knowledge pack URLs on stderr (stdout stays file-paths-only).
+emit_knowledge_packs() {
+  local chunk_id="$1"
+  jq -r --arg chunk "$chunk_id" '
+    (.chunks[$chunk].knowledge_packs // []) as $pack_ids
+    | (.knowledge_packs // {}) as $packs
+    | $pack_ids[]
+    | . as $id
+    | $packs[$id] // empty
+    | "  \($id) kind=\(.kind) " +
+      if .kind == "llms_txt" then
+        "llms_txt_url=\(.llms_txt_url // "") llms_full_url=\(.llms_full_url // "")"
+      else
+        "url=\(.url // "")"
+      end
+  ' "$map_file" 2>/dev/null
+}
+
+case "$mode" in
+  chunk)
+    if [ -n "$chunk_id" ]; then
+      kp_lines="$(emit_knowledge_packs "$chunk_id")"
+      if [ -n "$kp_lines" ]; then
+        echo "knowledge_packs chunk=$chunk_id" >&2
+        echo "$kp_lines" >&2
+      fi
+    fi
+    ;;
+  task)
+    if [ -n "$task_id" ]; then
+      likely="$(jq -r --arg task "$task_id" '.task_router[$task].likely_chunks[]? // empty' "$map_file" 2>/dev/null)"
+      for c in $likely; do
+        kp_lines="$(emit_knowledge_packs "$c")"
+        if [ -n "$kp_lines" ]; then
+          echo "knowledge_packs chunk=$c" >&2
+          echo "$kp_lines" >&2
+        fi
+      done
+    fi
+    ;;
+esac
+
 if [ -z "$max_files" ] || [ -z "$max_bytes" ]; then
   budgets="$(jq -r --arg mode "$mode" '.context_budgets[$mode] // {} | [.max_files // "", .max_bytes // ""] | @tsv' "$map_file")"
   [ -z "$max_files" ] && max_files="$(echo "$budgets" | awk -F'\t' '{print $1}')"
