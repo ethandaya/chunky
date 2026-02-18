@@ -1,5 +1,6 @@
 ---
 name: chunky
+license: MIT
 description: Spec-first workflow for planning and shipping large features with coding agents. Chunks work into independently executable units with minimal context routing. Use when planning a large feature, breaking down complex scope, chunking work for agents, oneshot implementation, or spec-driven development.
 ---
 
